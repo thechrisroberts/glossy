@@ -85,6 +85,7 @@
 			if (isset($_POST['gs_update']) && is_admin() && wp_verify_nonce($_POST['gs_verify'], 'gs-options')) {
 				update_option('gs_showInline', $_POST['gs_showInline']);
 				update_option('gs_addParagraph', $_POST['gs_addParagraph']);
+				update_option('gs_showHeader', $_POST['gs_showHeader']);
 		
 				echo '<div class="updated"><p><strong>Your options have been updated.</strong></p></div>';
 		    } else if (isset($_POST['gs_update'])) {
@@ -160,6 +161,11 @@
 			
 			<input id="gs_addParagraph_true" name="gs_addParagraph" value="true" type="radio" <?php if (get_option('gs_addParagraph', 'true') == 'true') echo "checked" ?> /> <label for="gs_addParagraph_true">Automatically split into paragraphs.</label><br />
 			<input id="gs_addParagraph_false" name="gs_addParagraph" value="false" type="radio" <?php if (get_option('gs_addParagraph', 'true') == 'false') echo "checked" ?> /> <label for="gs_addParagraph_false">Do not split into paragraphs.</label><br /><br />
+
+			By default, should all your Glossy entries show the term title in the tooltip? This can be set on a per-term basis with header="on/off" - ie, [gs nyse header="off"]<br /><br />
+			
+			<input id="gs_showHeader_on" name="gs_showHeader" value="on" type="radio" <?php if (get_option('gs_showHeader', 'on') == 'on') echo "checked" ?> /> <label for="gs_showHeader_on">Show headers by default.</label><br />
+			<input id="gs_showHeader_off" name="gs_showHeader" value="off" type="radio" <?php if (get_option('gs_showHeader', 'on') == 'off') echo "checked" ?> /> <label for="gs_showHeader_off">Do not show headers by default.</label><br /><br />
 			
 			<input type="submit" name="gs_update" value="Update Options" /><br /><br />
 		</form>
@@ -186,7 +192,7 @@
 					{
 						$gs_name = $gs_name_arr->gs_name;
 						
-						echo '<li><a href="admin.php?page=glossy-add-entry&gs_edit_entry='. urlencode($gs_name) .'">'. $gs_name .'</a><br />Preview: '. $glossy->display($gs_name, '', 'false') .'<br /></li>';
+						echo '<li><a href="admin.php?page=glossy-add-entry&gs_edit_entry='. urlencode($gs_name) .'">'. $gs_name .'</a><br />Preview: '. $glossy->display(array('term' => $gs_name)) .'<br /></li>';
 					}
 				}
 			?>

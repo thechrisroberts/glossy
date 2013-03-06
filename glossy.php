@@ -42,7 +42,6 @@ class Glossy {
     {
         register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', array($this, 'activatePlugin'));
 
-		add_shortcode('glossy', array($this, 'glossyShortcode'));
 		add_shortcode('glossyindex', array($this, 'indexShortcode'));
 		add_filter('the_content', array($this, 'scanContent'));
 
@@ -124,27 +123,51 @@ class Glossy {
 
     public function scanContent($content)
     {
-        preg_match_all('/\[gs ([^\/\]]+)(?:\/)?\](?:([^\]]*)(?:\[\/gs\]))?/', $content, $glossyMatches);
-        
-        $glossySet = $glossyMatches[0];
-        $glossyFound = $glossyMatches[1];
-        $glossyText = $glossyMatches[2];
+        /* Look inside [gs rules] */
+        $gs_expression  = '\[(?:gs|glossy(?!i))'; // Opening tag
+        $gs_expression .= '\s([^\/\]]*)]'; // Grab contents inside the opening tag
 
-        foreach ($glossyFound as $gs_index => $gs_name) {
-                $gs_tippy = $this->display(trim($gs_name), trim($glossyText[$gs_index]));
-                
-                // We're looping through first to last, so we want to be sure to only match the first one we find.
-                $content = preg_replace('/'. preg_quote($glossySet[$gs_index], '/') .'/', $gs_tippy, $content, 1);
+        /* See if we have anything between [gs rules]???[/gs] */
+        $gs_expression .= '(?:([^\[]*)'; // Content between opening and closing tag, if closing tag is present (next rule)
+        $gs_expression .= '\[\/(?:glossy|gs)\])?'; // Closing tag, if present
+
+        preg_match_all('/'. $gs_expression .'/', $content, $glossyMatches);
+
+        $matches = $glossyMatches[0];
+        $attributes = $glossyMatches[1];
+        $titles = $glossyMatches[2];
+
+        foreach ($attributes as $matchCount => $attributeSet) {
+        	$gs_display = array();
+
+        	// Search our attribute set for attribute names and values
+        	preg_match_all('/([^=\s]*)(?:="(.*)")?/', $attributeSet, $attributeMatch);
+
+        	$attributeNames = $attributeMatch[1];
+        	$attributeValues = $attributeMatch[2];
+
+        	foreach ($attributeNames as $attributeCount => $attribute) {
+        		$attributeValue = $attributeValues[$attributeCount];
+        		
+        		// Loop through our attribute matches looking first for any attribute
+        		// without a value - this is a standalone term. Any other attribute/value
+        		// pair, add to our display array. It will ignore any incorrect attribute.
+        		if (!empty($attribute) && empty($attributeValue)) {
+        			$gs_display['term'] = $attribute;
+        		} else {
+        			$gs_display[$attribute] = trim($attributeValue);
+        		}
+        	}
+
+        	if (!empty($titles[$matchCount])) {
+        		$gs_display['title'] = trim($titles[$matchCount]);
+        	}
+
+        	$gs_tippy = $this->display($gs_display);
+        	$content = preg_replace('/'. preg_quote($matches[$matchCount], '/') .'/', $gs_tippy, $content, 1);
         }
         
         return $content;
-    }
-
-	public function glossyShortcode($atts)
-    {
-        extract(shortcode_atts(array('term' => '', 'inline' => 'false', 'header' => 'on'), $atts));
-        
-        return $this->display($term, '', $inline);
     }
 
 	public function indexShortcode($atts)
@@ -153,7 +176,13 @@ class Glossy {
 		
 		extract(shortcode_atts(array(
 			'header' => 'on',
-			'inline' => 'false'
+			'inline' => 'false',
+			'showTerm' => true,
+			'beforeTerm' => '',
+			'afterTerm' => '',
+			'beforeDef' => '',
+			'afterDef' => '',
+			'defFirst' => false
 		), $atts));
 		
 		$gs_indexList = $this->getNames('alpha');
@@ -177,23 +206,26 @@ class Glossy {
 			}
 			
 			foreach($gs_indexItems as $gs_name => $gs_title) {
-				$gs_outputList .= $this->display($gs_name, '', $inline, true) ."<br />";
+				$gs_outputList .= $this->display(array('term' => $gs_name, 'inline' => $inline, 'showTerm' => true)) ."<br />";
 			}
 		}
 		
 		return $gs_outputList;
 	}
 
-	public function display($gs_name, $gs_text = '', $gs_inline = '', $gs_showTerm = false)
+	public function display($attributes)
 	{
 		global $tippy;
 
-		$gs_data = $this->getEntry($gs_name);
-		
-		if (!isset($gs_inline) || empty($gs_inline)) {
-			$gs_inline = get_option('gs_showInline', 'false');
-		}
+		// Grab our values from $attributes, setting defaults when needed
+		$gs_term = isset($attributes['term']) ? $attributes['term'] : false;
+		$gs_title = isset($attributes['title']) ? $attributes['title'] : false;
+		$gs_inline = isset($attributes['inline']) ? $attributes['inline'] : get_option('gs_showInline', 'false');
+		$gs_header = isset($attributes['header']) ? $attributes['header'] : get_option('gs_showHeader', 'on');
+		$gs_showTerm = isset($attributes['showTerm']) ? $attributes['showTerm'] : false;
 
+		$gs_data = $this->getEntry($gs_term);
+		
 		if (!empty($gs_data)) {
 			$gs_contents = $gs_data['contents'];
 			
@@ -208,17 +240,24 @@ class Glossy {
 			if ($gs_inline === 'false') {
 				if (is_object($tippy)) {
 					if (empty($gs_data['title'])) {
-						$tippyTitle = $gs_name;
+						$tippyHeader = $gs_term;
 					} else {
-						$tippyTitle = $gs_data['title'];
+						$tippyHeader = $gs_data['title'];
+					}
+
+					if (!empty($gs_title)) {
+						$tippyTitle = $gs_title;
+					} else {
+						$tippyTitle = $tippyHeader;
 					}
 					
 					// Check width and height values
 					$gs_dimensions = $this->getDimensions($gs_data['dimensions']);
 					
 					$tippyValues = array(
-						'header' => 'on',
-						'title' => tippy_format_title($tippyTitle),
+						'header' => $gs_header,
+						'headertext' => tippy_format_title($tippyHeader),
+						'title' => $tippyTitle,
 						'href' => $gs_data['link'],
 						'text' => tippy_format_text($gs_contents),
 						'class' => 'glossy_tip',
@@ -228,16 +267,8 @@ class Glossy {
 					);
 				
 					$tippyLink = $tippy->getLink($tippyValues);
-					
-					// Do we need to change the anchor text?
-					if (!empty($gs_text)) {
-						preg_match_all('/\<a [^\>]+\>([^\>]+)\<\/a\>/', $tippyLink, $gs_matchTitle);
-						
-						// Include angle brackets to ensure we are only replacing the anchor text
-						$tippyLink = str_replace('>'. $gs_matchTitle[1][0] .'<', '>'. $gs_text .'<', $tippyLink);
-					}
 				} else {
-					$tippyLink = $gs_name;
+					$tippyLink = $gs_term;
 				}
 				
 				return $tippyLink;
