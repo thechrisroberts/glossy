@@ -42,7 +42,6 @@ class Glossy {
     {
         register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', array($this, 'activatePlugin'));
 
-		add_shortcode('glossyindex', array($this, 'indexShortcode'));
 		add_filter('the_content', array($this, 'scanContent'));
 
 		add_action('wp_enqueue_scripts', array($this, 'initPlugin'));
@@ -124,7 +123,7 @@ class Glossy {
     public function scanContent($content)
     {
         /* Look inside [gs rules] */
-        $gs_expression  = '\[(?:gs|glossy(?!i))'; // Opening tag
+        $gs_expression  = '\[(gs|glossy|glossyindex)'; // Opening tag
         $gs_expression .= '\s([^\/\]]*)]'; // Grab contents inside the opening tag
 
         /* See if we have anything between [gs rules]???[/gs] */
@@ -134,8 +133,9 @@ class Glossy {
         preg_match_all('/'. $gs_expression .'/', $content, $glossyMatches);
 
         $matches = $glossyMatches[0];
-        $attributes = $glossyMatches[1];
-        $titles = $glossyMatches[2];
+        $performing = $glossyMatches[1];
+        $attributes = $glossyMatches[2];
+        $titles = $glossyMatches[3];
 
         foreach ($attributes as $matchCount => $attributeSet) {
         	$gs_display = array();
@@ -163,11 +163,53 @@ class Glossy {
         		$gs_display['title'] = trim($titles[$matchCount]);
         	}
 
-        	$gs_tippy = $this->display($gs_display);
-        	$content = preg_replace('/'. preg_quote($matches[$matchCount], '/') .'/', $gs_tippy, $content, 1);
+        	if ($performing[$matchCount] == "glossyindex") {
+        		$gs_tippy = $this->showIndex($gs_display);
+        	} else {
+	        	$gs_tippy = $this->display($gs_display);
+	        }
+
+	        $content = preg_replace('/'. preg_quote($matches[$matchCount], '/') .'/', $gs_tippy, $content, 1);
         }
         
         return $content;
+    }
+
+    private function showIndex($gs_display)
+    {
+    	$gs_indexList = $this->getNames('alpha');
+		$gs_outputList = "";
+
+		// Set up our index defaults
+		if (!isset($gs_display['header']))
+			$gs_display['header'] = 'on';
+
+		if (!isset($gs_display['showTerm']))
+			$gs_display['showTerm'] = 'true';
+
+		// Display the header of first characters
+		if ($gs_display['header'] == "on") {
+			$gs_outputList .= '<div id="gs_index"><a name="gs_index"></a><span id="gs_indexTitle">Index:</span>';
+			
+			foreach ($gs_indexList as $gs_indexAbbrev => $gs_indexItems) {
+				$gs_outputList .= '<a class="gs_indexAbbrev" href="#gs_indexAbbrevList_'. $gs_indexAbbrev .'">'. $gs_indexAbbrev .'</a>';
+			}
+			
+			$gs_outputList .= '</div>';
+		}
+		
+		// Output the listings
+		foreach ($gs_indexList as $gs_indexAbbrev => $gs_indexItems) {
+			if ($gs_display['header'] == "on") {
+				$gs_outputList .= '<a class="gs_indexAbbrevList" name="gs_indexAbbrevList_'. $gs_indexAbbrev .'" href="#gs_index">'. $gs_indexAbbrev .'</a>';
+			}
+			
+			foreach($gs_indexItems as $gs_name => $gs_title) {
+				$gs_outputList .= $this->display($gs_display);
+			}
+		}
+		
+		return $gs_outputList;
     }
 
 	public function indexShortcode($atts)
@@ -184,33 +226,6 @@ class Glossy {
 			'afterDef' => '',
 			'defFirst' => false
 		), $atts));
-		
-		$gs_indexList = $this->getNames('alpha');
-		$gs_outputList = "";
-		
-		// Display the header of first characters
-		if ($header == "on") {
-			$gs_outputList .= '<div id="gs_index"><a name="gs_index"></a><span id="gs_indexTitle">Index:</span>';
-			
-			foreach ($gs_indexList as $gs_indexAbbrev => $gs_indexItems) {
-				$gs_outputList .= '<a class="gs_indexAbbrev" href="#gs_indexAbbrevList_'. $gs_indexAbbrev .'">'. $gs_indexAbbrev .'</a>';
-			}
-			
-			$gs_outputList .= '</div>';
-		}
-		
-		// Output the listings
-		foreach ($gs_indexList as $gs_indexAbbrev => $gs_indexItems) {
-			if ($header == "on") {
-				$gs_outputList .= '<a class="gs_indexAbbrevList" name="gs_indexAbbrevList_'. $gs_indexAbbrev .'" href="#gs_index">'. $gs_indexAbbrev .'</a>';
-			}
-			
-			foreach($gs_indexItems as $gs_name => $gs_title) {
-				$gs_outputList .= $this->display(array('term' => $gs_name, 'inline' => $inline, 'showTerm' => true)) ."<br />";
-			}
-		}
-		
-		return $gs_outputList;
 	}
 
 	public function display($attributes)
