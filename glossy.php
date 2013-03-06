@@ -42,6 +42,7 @@ class Glossy {
     {
         register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', array($this, 'activatePlugin'));
 
+		add_shortcode('glossy', array($this, 'glossyShortcode'));
 		add_shortcode('glossyindex', array($this, 'indexShortcode'));
 		add_filter('the_content', array($this, 'scanContent'));
 
@@ -122,43 +123,29 @@ class Glossy {
 	}
 
     public function scanContent($content)
-	{
-		preg_match_all('/\[(?:gs|glossy(?!i))([^\]]+)?\](?:([^\[]+)\[\/(?:gs|glossy)\])?/', $content, $glossyMatches);
-		
-		for ($i = 0 ; $i < sizeof($glossyMatches[0]) ; $i++) {
-			$glossySet = $glossyMatches[0][$i];
-			$options = $glossyMatches[1][$i];
-			$headertext = $glossyMatches[2][$i];
-			preg_match_all('/\s([^\s]*)?/', $options, $splitOptions);
+    {
+        preg_match_all('/\[gs ([^\/\]]+)(?:\/)?\](?:([^\]]*)(?:\[\/gs\]))?/', $content, $glossyMatches);
+        
+        $glossySet = $glossyMatches[0];
+        $glossyFound = $glossyMatches[1];
+        $glossyText = $glossyMatches[2];
 
-			$gs_term = '';
-			$gs_text = $headertext;
-			$gs_inline = '';
+        foreach ($glossyFound as $gs_index => $gs_name) {
+                $gs_tippy = $this->display(trim($gs_name), trim($glossyText[$gs_index]));
+                
+                // We're looping through first to last, so we want to be sure to only match the first one we find.
+                $content = preg_replace('/'. preg_quote($glossySet[$gs_index], '/') .'/', $gs_tippy, $content, 1);
+        }
+        
+        return $content;
+    }
 
-			foreach ($splitOptions[0] as $optionPair) {
-				preg_match('/term=["\']([^"]+)["\']/', $optionPair, $terms);
-				if (!empty($terms)) {
-					$gs_term = $terms[1];
-				} else {
-					preg_match('/\s([^\s\"\'\/\]]*)?/', $optionPair, $termMatch);
-
-					if ($termMatch[0] != "inline=") {
-						$gs_term = $termMatch[0];
-					}
-				}
-
-				preg_match('/inline=["\']([^"]+)["\']/', $optionPair, $inlines);
-				if (!empty($inlines)) {
-					$gs_inline = $inlines[1];
-				}
-			}
-			
-			$gs_tippy = $this->display(trim($gs_term), trim($gs_text), $gs_inline);
-			$content = preg_replace('/'. preg_quote($glossySet, '/') .'/', $gs_tippy, $content, 1);
-		}
-
-		return $content;
-	}
+	public function glossyShortcode($atts)
+    {
+        extract(shortcode_atts(array('term' => '', 'inline' => 'false', 'header' => 'on'), $atts));
+        
+        return $this->display($term, '', $inline);
+    }
 
 	public function indexShortcode($atts)
 	{
