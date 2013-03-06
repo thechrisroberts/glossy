@@ -75,6 +75,8 @@
 		function gs_manageEntries_panel()
 		{
 			global $wpdb, $tippy;
+			$glossy = Glossy::Instance();
+			
 			$gs_tableName = $wpdb->prefix ."gs_store";
 			$gs_search_term = '';
 			$gs_search_query = '';
@@ -143,7 +145,6 @@
 
 <div class="wrap">
 	<h2>Manage Glossy Entries</h2>
-	<?php gs_tippy_check(); ?>
 	<div style="margin-left: 15px; margin-bottom: 30px;">
 		<br /><span class="gsOptionLabel">Options</span><br /><br />
 		
@@ -185,7 +186,7 @@
 					{
 						$gs_name = $gs_name_arr->gs_name;
 						
-						echo '<li><a href="admin.php?page=glossy-add-entry&gs_edit_entry='. urlencode($gs_name) .'">'. $gs_name .'</a><br />Preview: '. gs_display($gs_name, '', 'false') .'<br /></li>';
+						echo '<li><a href="admin.php?page=glossy-add-entry&gs_edit_entry='. urlencode($gs_name) .'">'. $gs_name .'</a><br />Preview: '. $glossy->display($gs_name, '', 'false') .'<br /></li>';
 					}
 				}
 			?>

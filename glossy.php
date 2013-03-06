@@ -25,40 +25,117 @@ Author URI: http://croberts.me/
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-if (!function_exists('gs_tippy_check')) {
-	function gs_tippy_check()
+class Glossy {
+	private static $glossy = false;
+
+	public static function Instance()
 	{
-		// Check for the presence of Tippy
-		if (!function_exists('tippy_getLink'))
-		{
-			echo '<div id="message" class="error">The Tippy plugin appears to be missing but is required by the Glossy plugin.</div>';
+		if (!self::$glossy) {
+			self::$glossy = new self();
+		}
+
+		return self::$glossy;
+	}
+
+	// Initialize everything
+    private function __construct()
+    {
+        register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', array($this, 'activatePlugin'));
+
+		add_shortcode('glossyindex', array($this, 'indexShortcode'));
+		add_filter('the_content', array($this, 'scanContent'));
+
+		add_action('wp_enqueue_scripts', array($this, 'initPlugin'));
+		add_action('admin_init', array($this, 'initPlugin'));
+
+		if (is_admin()) {
+			add_action('admin_notices', array($this, 'tippy_check'));
+			require_once(WP_PLUGIN_DIR . '/glossy/glossy.admin.php');
+		}
+    }
+
+    public function tippy_check()
+    {
+    	global $tippy;
+
+    	// Make sure $tippy is our object
+		if (!is_object($tippy)) {
+			echo '<div class="updated"><p><b>Notice:</b> The <a href="http://croberts.me/projects/wordpress-plugins/tippy-for-wordpress/" title="Tippy">Tippy</a> plugin appears to be missing or is outdated but is required to use Glossy. Please ensure both Glossy and Tippy are installed and up to date.</p></div>';
+		}
+    }
+
+    public function activatePlugin()
+	{
+		global $wpdb;
+		$gs_tableName = $wpdb->prefix ."gs_store";
+		
+		// See if table exists. If not, create it.
+		$gs_tableCheck = $wpdb->get_var("SHOW TABLES LIKE '". $gs_tableName ."'");
+		if ($gs_tableCheck != $gs_tableName) {
+			/*
+			 *
+			 * Glossy entries will need to be stored in a new database table, gs_store.
+			 *
+			 * Table structure:
+			 * gs_name varchar(255) not null primary key; unique name which serves as the unique identifier
+			 * gs_title tinytext; title to display for Tippy. Optional. If blank, use gs_name
+			 * gs_link tinytext; url to link Tippy title to. Optional. If blank, title will not be a link
+			 * gs_dimensions varchar[12]; optional width X height setting to pass to Tippy. When only one value present, use for width.
+			 * gs_contents medium text not null; contains the tooltip contents
+			 *
+			 */
+			$query = "CREATE TABLE " . $gs_tableName . " (
+					  gs_name varchar(255) NOT NULL,
+					  gs_title tinytext,
+					  gs_link tinytext,
+					  gs_dimensions varchar(12),
+					  gs_contents mediumtext NOT NULL,
+					  PRIMARY KEY  (gs_name)
+					  ) CHARACTER SET UTF8;";
+
+			echo $query;
+					  
+			require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+			dbDelta($query);
 		}
 	}
-}
 
-if (!function_exists('gs_scanContent')) {
-	function gs_scanContent($content)
+	public function initPlugin()
+	{
+		global $tippy;
+
+		wp_register_style('gs_style', plugins_url() .'/glossy/glossy.css');
+		wp_enqueue_style('gs_style');
+
+		// Load Tippy
+		if (is_object($tippy)) {
+			$tippy->register_scripts();
+			$tippy->register_styles();
+
+			wp_enqueue_style('Tippy');
+			wp_enqueue_script('Tippy');
+
+			if ($tippy->getOption('dragTips')) {
+	            wp_enqueue_script('jquery-ui-draggable');
+	        }
+	    }
+	}
+
+    public function scanContent($content)
 	{
 		preg_match_all('/\[(?:gs|glossy(?!i))([^\]]+)?\](?:([^\[]+)\[\/(?:gs|glossy)\])?/', $content, $glossyMatches);
 		
-		for ($i = 0 ; $i < sizeof($glossyMatches[0]) ; $i++)
-		{
+		for ($i = 0 ; $i < sizeof($glossyMatches[0]) ; $i++) {
 			$glossySet = $glossyMatches[0][$i];
 			$options = $glossyMatches[1][$i];
 			$headertext = $glossyMatches[2][$i];
 			preg_match_all('/\s([^\s]*)?/', $options, $splitOptions);
-
-			// echo '<pre>';
-			// echo $glossySet ."<br />";
-			// print_r($splitOptions);
-			// echo '</pre>';
 
 			$gs_term = '';
 			$gs_text = $headertext;
 			$gs_inline = '';
 
 			foreach ($splitOptions[0] as $optionPair) {
-				// print_r($optionPair);
 				preg_match('/term=["\']([^"]+)["\']/', $optionPair, $terms);
 				if (!empty($terms)) {
 					$gs_term = $terms[1];
@@ -75,19 +152,15 @@ if (!function_exists('gs_scanContent')) {
 					$gs_inline = $inlines[1];
 				}
 			}
-			// echo "Term: ". $gs_term ."<br />";
-			$gs_tippy = gs_display(trim($gs_term), trim($gs_text), $gs_inline);
+			
+			$gs_tippy = $this->display(trim($gs_term), trim($gs_text), $gs_inline);
 			$content = preg_replace('/'. preg_quote($glossySet, '/') .'/', $gs_tippy, $content, 1);
 		}
 
-		// die();
 		return $content;
 	}
-}
 
-// Display the glossy entries on an index page
-if (!function_exists('gs_indexShortcode')) {
-	function gs_indexShortcode($atts)
+	public function indexShortcode($atts)
 	{
 		$showingIndex = true;
 		
@@ -96,7 +169,7 @@ if (!function_exists('gs_indexShortcode')) {
 			'inline' => 'false'
 		), $atts));
 		
-		$gs_indexList = gs_get_names('alpha');
+		$gs_indexList = $this->getNames('alpha');
 		$gs_outputList = "";
 		
 		// Display the header of first characters
@@ -117,19 +190,18 @@ if (!function_exists('gs_indexShortcode')) {
 			}
 			
 			foreach($gs_indexItems as $gs_name => $gs_title) {
-				$gs_outputList .= gs_display($gs_name, '', $inline, true) ."<br />";
+				$gs_outputList .= $this->display($gs_name, '', $inline, true) ."<br />";
 			}
 		}
 		
 		return $gs_outputList;
 	}
-}
 
-if (!function_exists('gs_display'))
-{
-	function gs_display($gs_name, $gs_text = '', $gs_inline = '', $gs_showTerm = false)
+	public function display($gs_name, $gs_text = '', $gs_inline = '', $gs_showTerm = false)
 	{
-		$gs_data = gs_get_entry($gs_name);
+		global $tippy;
+
+		$gs_data = $this->getEntry($gs_name);
 		
 		if (!isset($gs_inline) || empty($gs_inline)) {
 			$gs_inline = get_option('gs_showInline', 'false');
@@ -147,34 +219,38 @@ if (!function_exists('gs_display'))
 			$gs_contents = do_shortcode($gs_contents);
 			
 			if ($gs_inline === 'false') {
-				if (empty($gs_data['title'])) {
-					$tippyTitle = $gs_name;
-				} else {
-					$tippyTitle = $gs_data['title'];
-				}
-				
-				// Check width and height values
-				$gs_dimensions = gs_get_dimensions($gs_data['dimensions']);
-				
-				$tippyValues = array(
-					'header' => 'on',
-					'title' => tippy_format_title($tippyTitle),
-					'href' => $gs_data['link'],
-					'text' => tippy_format_text($gs_contents),
-					'class' => 'glossy_tip',
-					'item' => 'glossy',
-					'width' => $gs_dimensions['width'],
-					'height' => $gs_dimensions['height']
-				);
-				
-				$tippyLink = tippy_getLink($tippyValues);
-				
-				// Do we need to change the anchor text?
-				if (!empty($gs_text)) {
-					preg_match_all('/\<a [^\>]+\>([^\>]+)\<\/a\>/', $tippyLink, $gs_matchTitle);
+				if (is_object($tippy)) {
+					if (empty($gs_data['title'])) {
+						$tippyTitle = $gs_name;
+					} else {
+						$tippyTitle = $gs_data['title'];
+					}
 					
-					// Include angle brackets to ensure we are only replacing the anchor text
-					$tippyLink = str_replace('>'. $gs_matchTitle[1][0] .'<', '>'. $gs_text .'<', $tippyLink);
+					// Check width and height values
+					$gs_dimensions = $this->getDimensions($gs_data['dimensions']);
+					
+					$tippyValues = array(
+						'header' => 'on',
+						'title' => tippy_format_title($tippyTitle),
+						'href' => $gs_data['link'],
+						'text' => tippy_format_text($gs_contents),
+						'class' => 'glossy_tip',
+						'item' => 'glossy',
+						'width' => $gs_dimensions['width'],
+						'height' => $gs_dimensions['height']
+					);
+				
+					$tippyLink = $tippy->getLink($tippyValues);
+					
+					// Do we need to change the anchor text?
+					if (!empty($gs_text)) {
+						preg_match_all('/\<a [^\>]+\>([^\>]+)\<\/a\>/', $tippyLink, $gs_matchTitle);
+						
+						// Include angle brackets to ensure we are only replacing the anchor text
+						$tippyLink = str_replace('>'. $gs_matchTitle[1][0] .'<', '>'. $gs_text .'<', $tippyLink);
+					}
+				} else {
+					$tippyLink = $gs_name;
 				}
 				
 				return $tippyLink;
@@ -191,14 +267,12 @@ if (!function_exists('gs_display'))
 			return '';
 		}
 	}
-}
 
-// Return an array with all entry names.
-// $format can be 'alpha' or 'list'
-// 'alpha' returns an array of arrays with the first character as the key. Useful to list just the entries in a range of characters (A-C, etc)
-// 'list' returns an array of all entries in one list, alphabetical order
-if (!function_exists('gs_get_names')) {
-	function gs_get_names($format = 'list')
+	// Return an array with all entry names.
+	// $format can be 'alpha' or 'list'
+	// 'alpha' returns an array of arrays with the first character as the key. Useful to list just the entries in a range of characters (A-C, etc)
+	// 'list' returns an array of all entries in one list, alphabetical order
+	public function getNames($format = 'list')
 	{
 		global $wpdb;
 		$gs_names_list = array();
@@ -233,11 +307,9 @@ if (!function_exists('gs_get_names')) {
 		
 		return $gs_names_list;
 	}
-}
 
-if (!function_exists('gs_get_entry')) {
-	// gs_get_entry($entryName) returns an array with the entry data
-	function gs_get_entry($entryName)
+	// getEntry($entryName) returns an array with the entry data
+	public function getEntry($entryName)
 	{
 		global $wpdb;
 		$gs_tableName = $wpdb->prefix ."gs_store";
@@ -259,11 +331,8 @@ if (!function_exists('gs_get_entry')) {
 			return '';
 		}
 	}
-}
 
-if (!function_exists('gs_get_dimensions'))
-{
-	function gs_get_dimensions($gs_dimensions)
+	public function getDimensions($gs_dimensions)
 	{
 		$gs_dimensions_arr['width'] = false;
 		$gs_dimensions_arr['height'] = false;
@@ -285,73 +354,106 @@ if (!function_exists('gs_get_dimensions'))
 		
 		return $gs_dimensions_arr;
 	}
-}
 
-if (!function_exists('gs_activatePlugin'))
-{
-	function gs_activatePlugin()
+	function saveEntry($entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents, $entryAction, $entryOriginalName)
 	{
 		global $wpdb;
 		$gs_tableName = $wpdb->prefix ."gs_store";
 		
-		/*
-		 *
-		 * Glossy entries will need to be stored in a new database table, gs_store.
-		 *
-		 * Table structure:
-		 * gs_name varchar(255) not null primary key; unique name which serves as the unique identifier
-		 * gs_title tinytext; title to display for Tippy. Optional. If blank, use gs_name
-		 * gs_link tinytext; url to link Tippy title to. Optional. If blank, title will not be a link
-		 * gs_dimensions varchar[12]; optional width X height setting to pass to Tippy. When only one value present, use for width.
-		 * gs_contents medium text not null; contains the tooltip contents
-		 *
-		 */
-		$query = "CREATE TABLE " . $gs_tableName . " (
-				  gs_name varchar(255) NOT NULL,
-				  gs_title tinytext,
-				  gs_link tinytext,
-				  gs_dimensions varchar(12),
-				  gs_contents mediumtext NOT NULL,
-				  PRIMARY KEY (gs_name)
-				  ) CHARACTER SET UTF8;";
-				  
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		dbDelta($query);
+		$saveData = true;
+		$errorFields = array();
+		
+		// Validate and sanitize data
+		
+		// Run checks on the name
+		
+		// See if the name is empty
+		if (empty($entryName))
+		{
+			$saveData = false;
+			$errorFields['entryName'] = 'empty';
+		
+		// Using a varchar(255) field; see if the name is too long to fit
+		} else if (strlen($entryName) > 255) {
+			$saveData = false;
+			$errorFields['entryName'] = 'long';
+		
+		// See if the name is unique
+		} else if ($entryAction == "Add" || $entryName != $entryOriginalName) {
+			$query = $wpdb->prepare("SELECT gs_name FROM ". $gs_tableName ." WHERE gs_name = '%s';", $entryName);
+			$existingName = $wpdb->get_var($query);
+			
+			if ($existingName)
+			{
+				$saveData = false;
+				$errorFields['entryName'] = 'taken';
+			}
+		}
+		
+		// Check the link
+		if (!empty($entryLink))
+		{
+			// Validate the url
+			$urlCheck = filter_var($entryLink, FILTER_VALIDATE_URL);
+			
+			if (!$urlCheck)
+			{
+				$saveData = false;
+				$errorFields['entryLink'] = 'invalid';
+			}
+		}
+		
+		// Validate the dimensions
+		if (!empty($entryDimensions))
+		{
+			// Make sure to get the right case for the X
+			$entryDimensions = strtolower($entryDimensions);
+			
+			$dimensions = explode("x", $entryDimensions);
+			
+			// Clean up possible spaces
+			$dimensions[0] = trim($dimensions[0]);
+			$dimensions[1] = trim($dimensions[1]);
+			
+			if (sizeof($dimensions) > 2 || !is_numeric($dimensions[0]) || (is_numeric($dimensions[0]) && intval($dimensions[0]) != $dimensions[0]) || (!empty($dimensions[1]) && (!is_numeric($dimensions[1]) || (is_numeric($dimensions[1]) && intval($dimensions[1]) != $dimensions[1]))))
+			{
+				$saveData = false;
+				$errorFields['entryDimensions'] = 'invalid';
+			}
+		}
+		
+		// Make sure we have content
+		if (empty($entryContents))
+		{
+			$saveData = false;
+			$errorFields['entryContents'] = 'empty';
+		}
+		
+		if ($saveData)
+		{
+			if ($entryAction == "Add")
+			{
+				$wpdb->insert($gs_tableName, array("gs_name" => $entryName, "gs_title" => $entryTitle, "gs_link" => $entryLink, "gs_dimensions" => $entryDimensions, "gs_contents" => $entryContents));
+			} else {
+				$wpdb->update($gs_tableName, array("gs_name" => $entryName, "gs_title" => $entryTitle, "gs_link" => $entryLink, "gs_dimensions" => $entryDimensions, "gs_contents" => $entryContents), array("gs_name" => $entryOriginalName));
+			}
+		}
+		
+		return $errorFields;
 	}
-}
 
-if (!function_exists('gs_initPlugin')) {
-	function gs_initPlugin()
+	function deleteEntry($gs_name)
 	{
-		global $tippy;
-
-		wp_register_style('gs_style', plugins_url() .'/glossy/glossy.css');
-		wp_enqueue_style('gs_style');
-
-		// Load Tippy
-		if (isset($tippy)) {
-			$tippy->register_scripts();
-			$tippy->register_styles();
-
-			wp_enqueue_style('Tippy');
-			wp_enqueue_script('Tippy');
-
-			if ($tippy->getOption('dragTips')) {
-	            wp_enqueue_script('jquery-ui-draggable');
-	        }
-	    }
+		global $wpdb;
+		$gs_tableName = $wpdb->prefix ."gs_store";
+		
+		$query = $wpdb->prepare("DELETE FROM ". $gs_tableName ." WHERE gs_name = '%s';", $gs_name);
+		$entryDeleted = $wpdb->query($query);
+		
+		return $entryDeleted;
 	}
 }
 
-register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', 'gs_activatePlugin');
+$glossy = Glossy::Instance();
 
-add_shortcode('glossyindex', 'gs_indexShortcode');
-add_filter('the_content', 'gs_scanContent');
-
-add_action('wp_enqueue_scripts', 'gs_initPlugin');
-add_action('admin_init', 'gs_initPlugin');
-
-if (is_admin()) {
-	require_once(WP_PLUGIN_DIR . '/glossy/glossy.admin.php');
-}
 ?>

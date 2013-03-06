@@ -37,6 +37,11 @@ Visit the Glossy settings in the Dashboard sidebar and configure as desired
 
 == Changelog ==
 
+= 2.0.0 =
+* Plugin is now a singleton object
+* Fix issue causing extra output when plugin activated
+* Checks for Tippy in the admin screen
+
 = 1.5.7 =
 * Fix issue with plugin crashing install when Tippy is not installed
 

@@ -3,6 +3,8 @@
 	{
 		function gs_addEntry_panel()
 		{
+			$glossy = Glossy::Instance();
+
 			$pageAction = "Add";
 			$entryOriginalName = "";
 			$entryName = "";
@@ -33,7 +35,7 @@
 			{
 				$entryName = trim(stripslashes($_POST['gs_entry_name']));
 				
-				$deleteEntry = gs_delete_entry($entryName);
+				$deleteEntry = $glossy->deleteEntry($entryName);
 				$deletedEntryName = $entryName;
 				
 				$pageAction = "Add";
@@ -50,7 +52,7 @@
 				$entryDimensions = trim(stripslashes($_POST['gs_entry_dimensions']));
 				$entryContents = trim(stripslashes($_POST['gs_entry_contents']));
 				
-				$saveEntry = gs_save_entry($entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents, $pageAction, $entryOriginalName);
+				$saveEntry = $glossy->saveEntry($entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents, $pageAction, $entryOriginalName);
 				
 				// If $saveEntry is empty (no errors) and we've been adding, switch to editing mode
 				if (empty($saveEntry))
@@ -64,7 +66,7 @@
 				$pageAction = "Edit";
 				$entryName = stripslashes($_GET['gs_edit_entry']);
 				
-				$entryData = gs_get_entry($entryName);
+				$entryData = $glossy->getEntry($entryName);
 				
 				// See if the entry data loaded. If not, the entry name must not be valid.
 				if (!empty($entryData))
@@ -84,7 +86,6 @@
 			?>
 <div class="wrap">
 	<h2><?php echo $pageAction; ?> Glossy Entry<?php if ($pageAction == "Edit") { echo " for <i>". $entryOriginalName ."</i>"; } ?></h2>
-	<?php gs_tippy_check(); ?>
 	<form method="post">
 
 	<div style="margin-left: 30px;">
@@ -188,112 +189,6 @@
 	</form>
 </div>
 			<?php
-		}
-	}
-	
-	if (!function_exists('gs_save_entry'))
-	{
-		function gs_save_entry($entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents, $entryAction, $entryOriginalName)
-		{
-			global $wpdb;
-			$gs_tableName = $wpdb->prefix ."gs_store";
-			
-			$saveData = true;
-			$errorFields = array();
-			
-			// Validate and sanitize data
-			
-			// Run checks on the name
-			
-			// See if the name is empty
-			if (empty($entryName))
-			{
-				$saveData = false;
-				$errorFields['entryName'] = 'empty';
-			
-			// Using a varchar(255) field; see if the name is too long to fit
-			} else if (strlen($entryName) > 255) {
-				$saveData = false;
-				$errorFields['entryName'] = 'long';
-			
-			// See if the name is unique
-			} else if ($entryAction == "Add" || $entryName != $entryOriginalName) {
-				$query = $wpdb->prepare("SELECT gs_name FROM ". $gs_tableName ." WHERE gs_name = '%s';", $entryName);
-				$existingName = $wpdb->get_var($query);
-				
-				if ($existingName)
-				{
-					$saveData = false;
-					$errorFields['entryName'] = 'taken';
-				}
-			}
-			
-			// Check the link
-			if (!empty($entryLink))
-			{
-				// Validate the url
-				$urlCheck = filter_var($entryLink, FILTER_VALIDATE_URL);
-				
-				if (!$urlCheck)
-				{
-					$saveData = false;
-					$errorFields['entryLink'] = 'invalid';
-				}
-			}
-			
-			// Validate the dimensions
-			if (!empty($entryDimensions))
-			{
-				// Make sure to get the right case for the X
-				$entryDimensions = strtolower($entryDimensions);
-				
-				$dimensions = explode("x", $entryDimensions);
-				
-				// Clean up possible spaces
-				$dimensions[0] = trim($dimensions[0]);
-				$dimensions[1] = trim($dimensions[1]);
-				
-				if (sizeof($dimensions) > 2 || !is_numeric($dimensions[0]) || (is_numeric($dimensions[0]) && intval($dimensions[0]) != $dimensions[0]) || (!empty($dimensions[1]) && (!is_numeric($dimensions[1]) || (is_numeric($dimensions[1]) && intval($dimensions[1]) != $dimensions[1]))))
-				{
-					$saveData = false;
-					$errorFields['entryDimensions'] = 'invalid';
-				}
-			}
-			
-			// Make sure we have content
-			if (empty($entryContents))
-			{
-				$saveData = false;
-				$errorFields['entryContents'] = 'empty';
-			}
-			
-			if ($saveData)
-			{
-				if ($entryAction == "Add")
-				{
-					// $query = $wpdb->prepare("INSERT INTO ". $gs_tableName ." SET gs_name = '%s', gs_title = '%s', gs_link = '%s', gs_dimensions = '%s', gs_contents = '%s';", $entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents);
-					$wpdb->insert($gs_tableName, array("gs_name" => $entryName, "gs_title" => $entryTitle, "gs_link" => $entryLink, "gs_dimensions" => $entryDimensions, "gs_contents" => $entryContents));
-				} else {
-					// $query = $wpdb->prepare("UPDATE ". $gs_tableName ." SET gs_name = '%s', gs_title = '%s', gs_link = '%s', gs_dimensions = '%s', gs_contents = '%s' WHERE gs_name = '%s';", $entryName, $entryTitle, $entryLink, $entryDimensions, $entryContents, $entryOriginalName);
-					$wpdb->update($gs_tableName, array("gs_name" => $entryName, "gs_title" => $entryTitle, "gs_link" => $entryLink, "gs_dimensions" => $entryDimensions, "gs_contents" => $entryContents), array("gs_name" => $entryOriginalName));
-				}
-			}
-			
-			return $errorFields;
-		}
-	}
-	
-	if (!function_exists('gs_delete_entry'))
-	{
-		function gs_delete_entry($gs_name)
-		{
-			global $wpdb;
-			$gs_tableName = $wpdb->prefix ."gs_store";
-			
-			$query = $wpdb->prepare("DELETE FROM ". $gs_tableName ." WHERE gs_name = '%s';", $gs_name);
-			$entryDeleted = $wpdb->query($query);
-			
-			return $entryDeleted;
 		}
 	}
 ?>
