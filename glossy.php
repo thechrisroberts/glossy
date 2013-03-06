@@ -124,7 +124,7 @@ class Glossy {
     {
         /* Look inside [gs rules] */
         $gs_expression  = '\[(gs|glossy|glossyindex)'; // Opening tag
-        $gs_expression .= '\s([^\/\]]*)]'; // Grab contents inside the opening tag
+        $gs_expression .= '(?:\s([^\]]*))?]'; // Grab contents inside the opening tag
 
         /* See if we have anything between [gs rules]???[/gs] */
         $gs_expression .= '(?:([^\[]*)'; // Content between opening and closing tag, if closing tag is present (next rule)
@@ -141,7 +141,12 @@ class Glossy {
         	$gs_display = array();
 
         	// Search our attribute set for attribute names and values
-        	preg_match_all('/([^=\s]*)(?:="(.*)")?/', $attributeSet, $attributeMatch);
+        	$attribute_match  = '([^=\s]*)'; // Match anything not an equal sign or space
+        	$attribute_match .= '(?:=(?:"|\')'; // Open a non-matching set starting with an = followed by ' or "
+        	$attribute_match .= '([^"\']*)'; // Catch anything between '' or ""
+        	$attribute_match .= '(?:"|\'))?'; // Get the closing ' or " and close the match
+
+			preg_match_all('/'. $attribute_match .'/', $attributeSet, $attributeMatch);
 
         	$attributeNames = $attributeMatch[1];
         	$attributeValues = $attributeMatch[2];
@@ -152,11 +157,13 @@ class Glossy {
         		// Loop through our attribute matches looking first for any attribute
         		// without a value - this is a standalone term. Any other attribute/value
         		// pair, add to our display array. It will ignore any incorrect attribute.
-        		if (!empty($attribute) && empty($attributeValue)) {
-        			$gs_display['term'] = $attribute;
-        		} else {
-        			$gs_display[$attribute] = trim($attributeValue);
-        		}
+        		if (!empty($attribute)) {
+	        		if (empty($attributeValue)) {
+	        			$gs_display['term'] = $attribute;
+	        		} else {
+	        			$gs_display[$attribute] = trim($attributeValue);
+	        		}
+	        	}
         	}
 
         	if (!empty($titles[$matchCount])) {
@@ -187,6 +194,18 @@ class Glossy {
 		if (!isset($gs_display['showTerm']))
 			$gs_display['showTerm'] = 'true';
 
+		if (!isset($gs_display['beforeDef']))
+			$gs_display['beforeDef'] = '';
+
+		if (!isset($gs_display['afterDef']))
+			$gs_display['afterDef'] = '<br />';
+
+		if (!isset($gs_display['beforeTerm']))
+			$gs_display['beforeTerm'] = '';
+
+		if (!isset($gs_display['afterTerm']))
+			$gs_display['afterTerm'] = '';
+
 		// Display the header of first characters
 		if ($gs_display['header'] == "on") {
 			$gs_outputList .= '<div id="gs_index"><a name="gs_index"></a><span id="gs_indexTitle">Index:</span>';
@@ -205,28 +224,13 @@ class Glossy {
 			}
 			
 			foreach($gs_indexItems as $gs_name => $gs_title) {
-				$gs_outputList .= $this->display($gs_display);
+				$gs_display['term'] = $gs_name;
+				$gs_outputList .= $gs_display['beforeDef'] . $this->display($gs_display) . $gs_display['afterDef'];
 			}
 		}
 		
 		return $gs_outputList;
     }
-
-	public function indexShortcode($atts)
-	{
-		$showingIndex = true;
-		
-		extract(shortcode_atts(array(
-			'header' => 'on',
-			'inline' => 'false',
-			'showTerm' => true,
-			'beforeTerm' => '',
-			'afterTerm' => '',
-			'beforeDef' => '',
-			'afterDef' => '',
-			'defFirst' => false
-		), $atts));
-	}
 
 	public function display($attributes)
 	{
@@ -237,7 +241,7 @@ class Glossy {
 		$gs_title = isset($attributes['title']) ? $attributes['title'] : false;
 		$gs_inline = isset($attributes['inline']) ? $attributes['inline'] : get_option('gs_showInline', 'false');
 		$gs_header = isset($attributes['header']) ? $attributes['header'] : get_option('gs_showHeader', 'on');
-		$gs_showTerm = isset($attributes['showTerm']) ? $attributes['showTerm'] : false;
+		$gs_showTerm = isset($attributes['showTerm']) ? $attributes['showTerm'] : 'false';
 
 		$gs_data = $this->getEntry($gs_term);
 		
@@ -288,10 +292,10 @@ class Glossy {
 				
 				return $tippyLink;
 			} else {
-				if ($gs_showTerm) {
-					$gs_return = $gs_data['title'] .': '. $gs_data['contents'];
+				if ($gs_showTerm == 'true') {
+					$gs_return = $attributes['beforeTerm'] . $gs_data['title'] . $attributes['afterTerm'] .' '. $gs_data['contents'];
 				} else {
-					$gs_return = $gs_contents;
+					$gs_return = $gs_data['contents'];
 				}
 
 				return $gs_return;
