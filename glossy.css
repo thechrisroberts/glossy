@@ -1,0 +1,39 @@
+.gs_error {
+	color: red;
+}
+
+#gs_entry_contents_wrapper {
+	width: 750px;
+}
+
+#gs_index {
+	padding: 5px;
+	border: 1px solid #ccc;
+}
+
+#gs_indexTitle {
+	display: inline-block;
+	font-size: 1.25em;
+	font-weight: normal;
+	margin-right: .75em;
+}
+
+.gs_indexAbbrev {
+	font-size: 1.25em;
+	font-weight: bold;
+	margin-right: .5em;
+}
+
+.gs_indexAbbrevList {
+	display: block;
+	font-size: 20px;
+	font-weight: bold;
+}
+
+a.gs_indexAbbrevList {
+	margin-top: 1.5em;
+}
+
+span.gs_indexAbbrevList {
+	margin-bottom: 1.5em;
+}
