@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 1.5.7
+Version: 2.0.0
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */

@@ -3,7 +3,7 @@ Contributors: Columcille
 Tags: glossary, dictionary, tooltip, popup
 Requires at least: 3.3
 Tested up to: 3.5.1
-Stable tag: 1.5.7
+Stable tag: 2.0.0
 
 Glossy allows you to define information text that can be used throughout your site with a simple shortcode.
 
@@ -38,9 +38,16 @@ Visit the Glossy settings in the Dashboard sidebar and configure as desired
 == Changelog ==
 
 = 2.0.0 =
-* Plugin is now a singleton object
 * Fix issue causing extra output when plugin activated
-* Checks for Tippy in the admin screen
+* New checks to ensure Tippy is installed
+* New checks for the Glossy db table when plugin activated
+* Improved handling of gs, glossy, and glossyindex shortcodes - gs and glossy can be used interchangeably
+* Can specify header="on/off" for each Glossy term.
+* Global setting for header on/off in the Glossy dashboard settings page.
+* New options for glossyindex - these are not yet finished, pushing out version 2 early to address some bugs
+* Glossy is now OOP.
+* Upcoming: export/import of terms. Easily backup terms, load into a new site, or even load new terms from a csv file.
+* Upcoming: additional access control options, allow more of your users access to Glossy terms.
 
 = 1.5.7 =
 * Fix issue with plugin crashing install when Tippy is not installed
