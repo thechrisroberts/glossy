@@ -140,31 +140,36 @@ class Glossy {
         foreach ($attributes as $matchCount => $attributeSet) {
         	$gs_display = array();
 
-        	// Search our attribute set for attribute names and values
-        	$attribute_match  = '([^=\s]*)'; // Match anything not an equal sign or space
-        	$attribute_match .= '(?:=(?:"|\')'; // Open a non-matching set starting with an = followed by ' or "
-        	$attribute_match .= '([^"\']*)'; // Catch anything between '' or ""
-        	$attribute_match .= '(?:"|\'))?'; // Get the closing ' or " and close the match
+        	// Check first to see if the attribute contains an =; if not, we can assume it is just a term
+        	if ($performing[$matchCount] != "glossyindex" && !strpos($attributeSet, '=')) {
+        		$gs_display['term'] = $attributeSet;
+        	} else {
+	        	// Search our attribute set for attribute names and values
+	        	$attribute_match  = '([^=\s]*)'; // Match anything not an equal sign or space
+	        	$attribute_match .= '(?:=(?:"|\')'; // Open a non-matching set starting with an = followed by ' or "
+	        	$attribute_match .= '([^"\']*)'; // Catch anything between '' or ""
+	        	$attribute_match .= '(?:"|\'))?'; // Get the closing ' or " and close the match
 
-			preg_match_all('/'. $attribute_match .'/', $attributeSet, $attributeMatch);
+				preg_match_all('/'. $attribute_match .'/', $attributeSet, $attributeMatch);
 
-        	$attributeNames = $attributeMatch[1];
-        	$attributeValues = $attributeMatch[2];
+	        	$attributeNames = $attributeMatch[1];
+	        	$attributeValues = $attributeMatch[2];
 
-        	foreach ($attributeNames as $attributeCount => $attribute) {
-        		$attributeValue = $attributeValues[$attributeCount];
-        		
-        		// Loop through our attribute matches looking first for any attribute
-        		// without a value - this is a standalone term. Any other attribute/value
-        		// pair, add to our display array. It will ignore any incorrect attribute.
-        		if (!empty($attribute)) {
-	        		if (empty($attributeValue)) {
-	        			$gs_display['term'] = $attribute;
-	        		} else {
-	        			$gs_display[$attribute] = trim($attributeValue);
-	        		}
+	        	foreach ($attributeNames as $attributeCount => $attribute) {
+	        		$attributeValue = $attributeValues[$attributeCount];
+	        		
+	        		// Loop through our attribute matches looking first for any attribute
+	        		// without a value - this is a standalone term. Any other attribute/value
+	        		// pair, add to our display array. It will ignore any incorrect attribute.
+	        		if (!empty($attribute)) {
+		        		if (empty($attributeValue)) {
+		        			$gs_display['term'] = $attribute;
+		        		} else {
+		        			$gs_display[$attribute] = trim($attributeValue);
+		        		}
+		        	}
 	        	}
-        	}
+	        }
 
         	if (!empty($titles[$matchCount])) {
         		$gs_display['title'] = trim($titles[$matchCount]);
