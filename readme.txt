@@ -3,7 +3,7 @@ Contributors: Columcille
 Tags: glossary, dictionary, tooltip, popup
 Requires at least: 3.3
 Tested up to: 3.5.1
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 
 Glossy allows you to define information text that can be used throughout your site with a simple shortcode.
 
@@ -36,6 +36,13 @@ Make sure you have <a href="http://croberts.me/tippy-for-wordpress/">Tippy</a> i
 Visit the Glossy settings in the Dashboard sidebar and configure as desired
 
 == Changelog ==
+
+= 2.1.0 =
+* New import/export option
+* New access option - choose which user role has access to manage entries
+* Glossy can now receive any attribute available for Tippy
+* New attributes useful with inline glossyindex: showTerm, beforeDef, afterDef, beforeTerm, afterTerm
+* Improvements to admin loading
 
 = 2.0.0 =
 * Fix issue causing extra output when plugin activated

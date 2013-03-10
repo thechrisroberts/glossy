@@ -176,7 +176,7 @@
 	
 	<input type="hidden" name="gs_entry_original_name" value="<?php echo $entryOriginalName; ?>" />
 	<input type="hidden" name="gs_entry_action" value="<?php echo $pageAction; ?>" />
-	<input type="submit" name="gs_entry_update" value="Save Entry" />
+	<input type="submit" class ="button button-primary" name="gs_entry_update" value="Save Entry" />
 	<?php
 		if ($pageAction == "Edit")
 		{
