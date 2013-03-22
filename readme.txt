@@ -3,7 +3,7 @@ Contributors: Columcille
 Tags: glossary, dictionary, tooltip, popup
 Requires at least: 3.3
 Tested up to: 3.5.1
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 
 Glossy allows you to define information text that can be used throughout your site with a simple shortcode.
 
@@ -36,6 +36,9 @@ Make sure you have <a href="http://croberts.me/tippy-for-wordpress/">Tippy</a> i
 Visit the Glossy settings in the Dashboard sidebar and configure as desired
 
 == Changelog ==
+
+= 2.1.1 =
+* Fixed glitch when glossy entries contain a $ sign.
 
 = 2.1.0 =
 * New import/export option
