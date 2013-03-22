@@ -49,7 +49,6 @@ class Glossy {
 		add_filter('the_content', array($this, 'scanContent'));
 
 		add_action('wp_enqueue_scripts', array($this, 'initPlugin'));
-		// add_action('admin_init', array($this, 'initPlugin'));
 
 		if (is_admin()) {
 			add_action('admin_notices', array($this, 'tippy_check'));
@@ -186,7 +185,7 @@ class Glossy {
 	        	$gs_tippy = $this->display($gs_display);
 	        }
 
-	        $content = preg_replace('/'. preg_quote($matches[$matchCount], '/') .'/', $gs_tippy, $content, 1);
+	        $content = str_replace($matches[$matchCount], $gs_tippy, $content);
         }
         
         return $content;
@@ -294,7 +293,7 @@ class Glossy {
 					$tippyValues['item'] = 'glossy';
 					$tippyValues['width'] = $gs_dimensions['width'];
 					$tippyValues['height'] = $gs_dimensions['height'];
-				
+					
 					$tippyLink = $tippy->getLink($tippyValues);
 				} else {
 					$tippyLink = $gs_term;
