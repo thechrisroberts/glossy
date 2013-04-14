@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Description: Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 2.1.1
+Version: 2.2.0
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */
@@ -46,7 +46,9 @@ class Glossy {
 
         register_activation_hook(WP_PLUGIN_DIR . '/glossy/glossy.php', array($this, 'activatePlugin'));
 
-		add_filter('the_content', array($this, 'scanContent'));
+		add_filter('the_content', array($this, 'scanContent'), 10);
+		add_shortcode('gs', array($this, 'glossyShortcode'), 11);
+		add_shortcode('glossy', array($this, 'glossyShortcode'), 11);
 
 		add_action('wp_enqueue_scripts', array($this, 'initPlugin'));
 
@@ -189,6 +191,24 @@ class Glossy {
         }
         
         return $content;
+    }
+
+    public function glossyShortcode($atts, $content = '')
+    {
+    	// Rebuild string to pass to scanContent
+    	$shortcodeString = '[glossy ';
+
+    	foreach ($atts as $term => $termValue) {
+    		$shortcodeString .= $term .'="'. $termValue .'" ';
+    	}
+
+    	$shortcodeString .= ']';
+
+    	if (!empty($content)) {
+    		$shortcodeString .= $content . '[/glossy]';
+    	}
+
+    	return $this->scanContent($shortcodeString);
     }
 
     private function showIndex($gs_display)
