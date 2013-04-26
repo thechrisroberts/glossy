@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Description: Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 2.2.0
+Version: 2.2.1
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */
@@ -305,10 +305,10 @@ class Glossy {
 					$tippyValues = $attributes;
 
 					$tippyValues['header'] = $gs_header;
-					$tippyValues['headertext'] = tippy_format_title($tippyHeader);
-					$tippyValues['title'] = tippy_format_title($tippyTitle);
+					$tippyValues['headertext'] = $tippy->format_title($tippyHeader);
+					$tippyValues['title'] = $tippy->format_title($tippyTitle);
 					$tippyValues['href'] = $gs_data['link'];
-					$tippyValues['text'] = tippy_format_text($gs_contents);
+					$tippyValues['text'] = $tippy->format_text($gs_contents);
 					$tippyValues['class'] = isset($attributes['class']) ? $attributes['class'] .'glossy_tip' : 'glossy_tip';
 					$tippyValues['item'] = 'glossy';
 					$tippyValues['width'] = $gs_dimensions['width'];
@@ -369,7 +369,8 @@ class Glossy {
 			if ($format == 'list') {
 				$gs_names_list[$gs_name] = $gs_title;
 			} else {
-				$gs_name_category = strtoupper(substr($gs_title, 0, 1));
+				// $gs_name_category = strtoupper(substr($gs_title, 0, 1));
+				$gs_name_category = mb_strtoupper(mb_substr($gs_title, 0, 1, "UTF-8"), "UTF-8");
 				$gs_names_list[$gs_name_category][$gs_name] = $gs_title;
 			}
 		}
