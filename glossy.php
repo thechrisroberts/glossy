@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Description: Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 2.3.0
+Version: 2.3.1
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */
@@ -129,7 +129,7 @@ class Glossy {
     public function scanContent($content)
     {
         /* Look inside [gs rules] */
-        $gs_expression  = '\[(gs|glossy|glossyindex)'; // Opening tag
+        $gs_expression  = '(?<!\[)\[(gs|glossy|glossyindex)'; // Opening tag
         $gs_expression .= '(?:\s([^\]]*))?]'; // Grab contents inside the opening tag
 
         /* See if we have anything between [gs rules]???[/gs] */
