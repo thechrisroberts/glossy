@@ -9,6 +9,8 @@
 				update_option('gs_addParagraph', $_POST['gs_addParagraph']);
 				update_option('gs_showHeader', $_POST['gs_showHeader']);
 				update_option('gs_access', $_POST['gs_access']);
+				$useDivContent = isset($_POST['gs_useDivContent']) ? 'true' : 'false';
+				update_option('gs_useDivContent', $useDivContent);
 		
 				echo '<div class="updated"><p><strong>Your options have been updated.</strong></p></div>';
 		    } else if (isset($_POST['gs_update'])) {
@@ -62,6 +64,13 @@
 				<option value="editor"<?php if (get_option('gs_access', 'admin') == 'editor') { echo ' selected="selected"'; } ?>>Editor</option>
 				<option value="contributor"<?php if (get_option('gs_access', 'admin') == 'contributor') { echo ' selected="selected"'; } ?>>Contributor</option>
 			</select><br /><br />
+
+			Should Glossy use the experimental content method of Tippy? In some cases, this will allow Glossy content to work that would otherwise fail.<br /><br />
+
+			<input id="gs_useDivContent" name="gs_useDivContent" type="checkbox" value="true" <?php if (get_option('gs_useDivContent', 'false') === 'true') echo "checked" ?> /> 
+			<label for="gs_useDivContent">
+				Use new content method
+			</label><br /><br />
 			
 			<input type="submit" class ="button button-primary" name="gs_update" value="Update Options" /><br /><br />
 		</form>
