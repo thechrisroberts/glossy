@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Description: Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 2.3.1
+Version: 2.3.3
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */
@@ -62,10 +62,8 @@ class Glossy {
 
     public function tippy_check()
     {
-    	global $tippy;
-
-    	// Make sure $tippy is our object
-		if (!is_object($tippy)) {
+    	// Make sure Tippy is loaded
+		if (!method_exists('Tippy', 'getOption')) {
 			echo '<div class="updated"><p><b>Notice:</b> The <a href="http://croberts.me/projects/wordpress-plugins/tippy-for-wordpress/" title="Tippy">Tippy</a> plugin appears to be missing or is outdated but is required to use Glossy. Please ensure both Glossy and Tippy are installed and up to date.</p></div>';
 		}
     }
@@ -107,20 +105,18 @@ class Glossy {
 
 	public function initPlugin()
 	{
-		global $tippy;
-
 		wp_register_style('gs_style', plugins_url() .'/glossy/glossy.css');
 		wp_enqueue_style('gs_style');
 
 		// Load Tippy
-		if (is_object($tippy)) {
-			$tippy->register_scripts();
-			$tippy->register_styles();
+		if (method_exists('Tippy', 'getOption')) {
+			Tippy::register_scripts();
+			Tippy::register_styles();
 
 			wp_enqueue_style('Tippy');
 			wp_enqueue_script('Tippy');
 
-			if ($tippy->getOption('dragTips')) {
+			if (Tippy::getOption('dragTips')) {
 	            wp_enqueue_script('jquery-ui-draggable');
 	        }
 	    }
@@ -263,8 +259,6 @@ class Glossy {
 
 	public function display($attributes)
 	{
-		global $tippy;
-
 		// Grab our values from $attributes, setting defaults when needed
 		$gs_term = isset($attributes['term']) ? $attributes['term'] : false;
 		$gs_title = isset($attributes['title']) ? $attributes['title'] : false;
@@ -286,7 +280,7 @@ class Glossy {
 			$gs_contents = do_shortcode($gs_contents);
 			
 			if ($gs_inline === 'false') {
-				if (is_object($tippy)) {
+				if (method_exists('Tippy', 'getOption')) {
 					if (empty($gs_data['title'])) {
 						$tippyHeader = $gs_term;
 					} else {
@@ -305,20 +299,16 @@ class Glossy {
 					$tippyValues = $attributes;
 
 					$tippyValues['header'] = $gs_header;
-					$tippyValues['headertext'] = $tippy->format_title($tippyHeader);
-					$tippyValues['title'] = $tippy->format_title($tippyTitle);
+					$tippyValues['headertext'] = $tippyHeader;
+					$tippyValues['title'] = $tippyTitle;
 					$tippyValues['href'] = $gs_data['link'];
-					$tippyValues['text'] = $tippy->format_text($gs_contents);
+					$tippyValues['text'] = $gs_contents;
 					$tippyValues['class'] = isset($attributes['class']) ? $attributes['class'] .'glossy_tip' : 'glossy_tip';
 					$tippyValues['item'] = 'glossy';
 					$tippyValues['width'] = $gs_dimensions['width'];
 					$tippyValues['height'] = $gs_dimensions['height'];
-
-					if (get_option('gs_useDivContent', 'false') === 'true') {
-						$tippyValues['useDiv'] = true;
-					}
 					
-					$tippyLink = $tippy->getLink($tippyValues);
+					$tippyLink = Tippy::getLink($tippyValues);
 				} else {
 					$tippyLink = $gs_term;
 				}
@@ -552,18 +542,21 @@ class Glossy {
 				if (!empty($entryLine)) {
 					list($gs_name, $gs_title, $gs_link, $gs_dimensions, $gs_contents) = explode(", ", $entryLine, 5);
 
+					$storeText = str_replace('&#44;', ',', $gs_contents);
+					$storeText = str_replace('|NNEWLINE|', "\n", $storeText);
+					$storeText = str_replace('|RNEWLINE|', "\r", $storeText);
+
 					$importArr[] = array('name' => str_replace('&#44;', ',', $gs_name), 
 										 'title' => str_replace('&#44;', ',', $gs_title), 
 										 'link' => str_replace('&#44;', ',', $gs_link), 
 										 'dimensions' => str_replace('&#44;', ',', $gs_dimensions), 
-									 	 'contents' => str_replace('&#44;', ',', $gs_contents))	;
+									 	 'contents' => $storeText);
 				}
 			}
 		}
 
 		if (is_array($importArr) && !empty($importArr)) {
 			foreach ($importArr as $gs_entry) {
-				// Convert any &#44; back to ,
 				$gs_name = $gs_entry['name'];
 				$gs_title = $gs_entry['title'];
 				$gs_link = $gs_entry['link'];
@@ -624,7 +617,10 @@ class Glossy {
 			} else if ($exportMethod == "serial") {
 				$exportGlobalArr[] = $exportArray;
 			} else if ($exportMethod == "csv") {
-				$exportText .= str_replace(',', '&#44;', $gs_entry['gs_name']) .", ". str_replace(',', '&#44;', $gs_entry['gs_title']) .", ". str_replace(',', '&#44;', $gs_entry['gs_link']) .", ". str_replace(',', '&#44;', $gs_entry['gs_dimensions']) .", ". str_replace(',', '&#44;', $gs_entry['gs_contents']) ."\r\n";
+				$storeText = str_replace(',', '&#44;', $gs_entry['gs_contents']);
+				$storeText = str_replace("\n", '|NNEWLINE|', $storeText);
+				$storeText = str_replace("\r", '|RNEWLINE|', $storeText);
+				$exportText .= str_replace(',', '&#44;', $gs_entry['gs_name']) .", ". str_replace(',', '&#44;', $gs_entry['gs_title']) .", ". str_replace(',', '&#44;', $gs_entry['gs_link']) .", ". str_replace(',', '&#44;', $gs_entry['gs_dimensions']) .", ". $storeText ."\r\n";
 			}
 		}
 

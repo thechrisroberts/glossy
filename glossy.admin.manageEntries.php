@@ -74,7 +74,7 @@
 	{
 		function gs_manageEntries_panel()
 		{
-			global $wpdb, $tippy;
+			global $wpdb;
 			$glossy = Glossy::Instance();
 			
 			$gs_tableName = $wpdb->prefix ."gs_store";
@@ -121,7 +121,7 @@
 			}
 
 			// Let's initialize Tippy for previews:
-			$tippy->initialize_tippy();
+			Tippy::initialize_tippy();
 ?>
 <style type="text/css">
 	div.wrap {
@@ -183,6 +183,7 @@
 	</div>
 </div>
 <?php
+			echo Tippy::insert_tippy_content('');
 		}
 	}
 ?>
