@@ -2,8 +2,8 @@
 Contributors: Columcille
 Tags: glossary, dictionary, tooltip, popup
 Requires at least: 3.3
-Tested up to: 3.5.1
-Stable tag: 2.3.4
+Tested up to: 3.6.1
+Stable tag: 2.3.5
 
 Glossy allows you to define information text that can be used throughout your site with a simple shortcode.
 
@@ -36,6 +36,9 @@ Make sure you have <a href="http://croberts.me/tippy-for-wordpress/">Tippy</a> i
 Visit the Glossy settings in the Dashboard sidebar and configure as desired
 
 == Changelog ==
+
+= 2.3.5 =
+* Fixed an issue setting the width and height
 
 = 2.3.4 =
 * Fixed how the options are passed to Tippy.

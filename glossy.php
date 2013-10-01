@@ -3,7 +3,7 @@
 Plugin Name: Glossy
 Plugin URI: http://croberts.me/glossy/
 Description: Makes it easy to create site-wide glossary or dictionary entries which pop up using the Tippy plugin
-Version: 2.3.4
+Version: 2.3.5
 Author: Chris Roberts
 Author URI: http://croberts.me/
 */
@@ -308,12 +308,12 @@ class Glossy {
 						$tippyValues['href'] = $gs_data['link'];
 					}
 					
-					if (isset($gs_data['width']) && !empty($gs_data['width'])) {
-						$tippyValues['width'] = $gs_data['width'];
+					if ($gs_dimensions['width']) {
+						$tippyValues['width'] = $gs_dimensions['width'];
 					}
 					
-					if (isset($gs_data['height']) && !empty($gs_data['height'])) {
-						$tippyValues['height'] = $gs_data['height'];
+					if ($gs_dimensions['height']) {
+						$tippyValues['height'] = $gs_dimensions['height'];
 					}
 					
 					$tippyLink = Tippy::getLink($tippyValues);
